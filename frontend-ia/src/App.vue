@@ -29,15 +29,46 @@
             Gastos
           </button>
           <button 
+            :class="['nav-item', { active: activeTab === 'grupo' }]"
+            @click="activeTab = 'grupo'; showFamilyDrawer = true"
+          >
+            Grupo
+          </button>
+          <button 
             :class="['nav-item', { active: activeTab === 'adicionar' }]"
             @click="activeTab = 'adicionar'"
           >
             Novo
           </button>
         </nav>
-        <button @click="handleLogout" class="logout-btn">
-          <i class="pi pi-sign-out"></i> Sair
-        </button>
+        <div class="header-actions">
+          <div v-if="currentUser" class="user-menu-wrapper">
+            <button class="user-name" @click="showUserMenu = !showUserMenu">
+              <span class="user-avatar">{{ (currentUser.first_name || currentUser.username || '?').charAt(0).toUpperCase() }}</span>
+              <span class="user-label">{{ currentUser.first_name || currentUser.username }}</span>
+              <i class="pi pi-chevron-down" :class="{ rotated: showUserMenu }"></i>
+            </button>
+            <div v-if="showUserMenu" class="user-dropdown">
+              <div class="dropdown-header">
+                <span class="user-avatar">{{ (currentUser.first_name || currentUser.username || '?').charAt(0).toUpperCase() }}</span>
+                <div class="dropdown-info">
+                  <span class="dropdown-name">{{ currentUser.first_name || currentUser.username }}</span>
+                  <span class="dropdown-email">{{ currentUser.email || '' }}</span>
+                </div>
+              </div>
+              <div class="dropdown-divider"></div>
+              <div v-if="currentFamily" class="dropdown-group-info">
+                <span class="group-label">Grupo</span>
+                <span class="group-name">{{ currentFamily.name }}</span>
+              </div>
+              <div v-if="currentFamily" class="dropdown-divider"></div>
+              <button @click="handleLogout" class="dropdown-item danger">
+                <i class="pi pi-sign-out"></i>
+                <span>Sair</span>
+              </button>
+            </div>
+          </div>
+        </div>
         </div>
       </div>
     </header>
@@ -85,19 +116,54 @@
             </button>
           </div>
 
-          <div v-else class="gastos-list">
-            <div v-for="g in gastos" :key="g.id" class="gasto-item">
-              <div class="gasto-info">
-                <h4>{{ getCategoriaLabel(g.categoria) }}</h4>
-                <p class="gasto-date">{{ formatarData(g.data) }}</p>
-                <small v-if="g.descricao" class="gasto-desc">{{ g.descricao }}</small>
-                <small class="gasto-time">{{ formatarTempo(g.criado_em) }}</small>
+          <div v-else>
+            <div v-if="currentFamily" class="gasto-filter-tabs">
+              <button
+                :class="['filter-tab', { active: gastoFilter === 'todos' }]"
+                @click="gastoFilter = 'todos'"
+              >
+                Todos ({{ gastos.length }})
+              </button>
+              <button
+                :class="['filter-tab', { active: gastoFilter === 'grupo' }]"
+                @click="gastoFilter = 'grupo'"
+              >
+                Grupo ({{ gastosGrupo.length }})
+              </button>
+              <button
+                :class="['filter-tab', { active: gastoFilter === 'meus' }]"
+                @click="gastoFilter = 'meus'"
+              >
+                Meus ({{ gastosMeus.length }})
+              </button>
+            </div>
+
+            <div class="gastos-list">
+              <div v-if="gastosFiltrados.length === 0" class="empty-filter">
+                <p>Nenhum gasto nesta categoria.</p>
               </div>
-              <div class="gasto-right">
-                <div class="gasto-value">{{ formatarValor(g.valor) }}</div>
-                <button @click="excluirGasto(g.id)" class="delete-btn">
-                  ×
-                </button>
+              <div
+                v-for="g in gastosFiltrados"
+                :key="g.id"
+                class="gasto-item"
+                :class="{ 'gasto-group': g.is_group }"
+              >
+                <div class="gasto-info">
+                  <div class="gasto-header-row">
+                    <h4>{{ getCategoriaLabel(g.categoria) }}</h4>
+                    <span v-if="g.is_group" class="group-badge">Grupo</span>
+                  </div>
+                  <p class="gasto-date">{{ formatarData(g.data) }}</p>
+                  <small v-if="g.descricao" class="gasto-desc">{{ g.descricao }}</small>
+                  <small class="gasto-time">{{ formatarTempo(g.criado_em) }}</small>
+                  <small v-if="g.user_name" class="gasto-user">@{{ g.user_name }}</small>
+                </div>
+                <div class="gasto-right">
+                  <div class="gasto-value">{{ formatarValor(g.valor) }}</div>
+                  <button @click="excluirGasto(g.id)" class="delete-btn">
+                    ×
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -167,7 +233,16 @@
 
     </main>
 
+    <FamilyDrawer
+      v-model:visible="showFamilyDrawer"
+      :family="currentFamily"
+      :current-user="currentUser"
+      @family-action="handleFamilyAction"
+    />
     </template>
+
+    <Toast position="top-right" />
+    <ConfirmDialog />
   </div>
 </template>
 
@@ -177,8 +252,18 @@ import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import DashboardCharts from './components/DashboardCharts.vue'
 import AuthView from './components/AuthView.vue'
+import FamilyDrawer from './components/FamilyDrawer.vue'
+import Toast from 'primevue/toast'
+import ConfirmDialog from 'primevue/confirmdialog'
 import logo from './assets/logo.png'
-import { API_ENDPOINTS, apiRequest, isAuthenticated, clearTokens } from './config/api.js'
+import {
+  API_ENDPOINTS,
+  API_BASE_URL,
+  apiRequest,
+  isAuthenticated,
+  clearTokens,
+  getFamily
+} from './config/api.js'
 
 export default {
   components: {
@@ -186,7 +271,10 @@ export default {
     InputNumber,
     InputText,
     DashboardCharts,
-    AuthView
+    AuthView,
+    FamilyDrawer,
+    Toast,
+    ConfirmDialog
   },
 
   data() {
@@ -194,7 +282,12 @@ export default {
       logo,
       isAuth: false,
       activeTab: 'dashboard',
+      currentFamily: null,
+      currentUser: null,
+      showFamilyDrawer: false,
+      showUserMenu: false,
       gastos: [],
+      gastoFilter: 'todos', // 'todos' | 'grupo' | 'meus'
       novo: {
         valor: null,
         categoria: '',
@@ -237,12 +330,28 @@ export default {
              this.novo.valor > 0 && 
              this.novo.categoria && 
              this.novo.data
+    },
+
+    gastosGrupo() {
+      return this.gastos.filter(g => g.is_group)
+    },
+    gastosMeus() {
+      // Todos os gastos que EU criei (grupo ou individual)
+      const myId = this.currentUser?.id
+      return this.gastos.filter(g => g.user === myId)
+    },
+    gastosFiltrados() {
+      if (this.gastoFilter === 'grupo') return this.gastosGrupo
+      if (this.gastoFilter === 'meus') return this.gastosMeus
+      return this.gastos
     }
   },
 
-  mounted() {
+  async mounted() {
     this.isAuth = isAuthenticated()
     if (this.isAuth) {
+      await this.fetchUser()
+      await this.fetchFamily()
       this.carregarGastos()
     }
   },
@@ -423,17 +532,52 @@ export default {
       }
     },
 
-    handleLoginSuccess() {
+    async handleLoginSuccess() {
       this.isAuth = true
-      this.activeTab = 'dashboard'
+      await this.fetchUser()
+      await this.fetchFamily()
       this.carregarGastos()
+    },
+
+    async fetchUser() {
+      try {
+        const data = await apiRequest(API_ENDPOINTS.AUTH_USER)
+        this.currentUser = data
+      } catch (error) {
+        console.warn('Não foi possível obter dados do usuário:', error)
+      }
+    },
+
+    async fetchFamily() {
+      try {
+        this.currentFamily = await getFamily()
+      } catch (error) {
+        console.warn('Não foi possível obter dados da família:', error)
+        this.currentFamily = null
+      }
+    },
+
+    handleFamilyAction({ action }) {
+      if (action === 'created' || action === 'joined') {
+        this.fetchFamily()
+        this.carregarGastos()
+      } else if (action === 'left' || action === 'deleted') {
+        this.currentFamily = null
+        this.carregarGastos()
+      } else if (action === 'code-regenerated' || action === 'member-removed') {
+        this.fetchFamily()
+      }
     },
 
     handleLogout() {
       clearTokens()
       this.isAuth = false
-      this.gastos = []
       this.activeTab = 'dashboard'
+      this.gastos = []
+      this.currentFamily = null
+      this.currentUser = null
+      this.showFamilyDrawer = false
+      this.showUserMenu = false
     }
   }
 }
@@ -843,6 +987,229 @@ export default {
   color: #ef4444;
 }
 
+/* GASTO FILTER TABS */
+.gasto-filter-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.user-menu-wrapper {
+  position: relative;
+}
+
+.user-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #d1d5db;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.user-name:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.user-name i.rotated {
+  transform: rotate(180deg);
+}
+
+.user-name i {
+  font-size: 11px;
+  transition: transform 0.2s ease;
+}
+
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #22c55e;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.user-label {
+  color: #d1d5db;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 12px;
+  padding: 8px;
+  min-width: 240px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  z-index: 1000;
+  animation: dropdownIn 0.15s ease;
+}
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+}
+
+.dropdown-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dropdown-name {
+  color: #f3f4f6;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.dropdown-email {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: #374151;
+  margin: 4px 0;
+}
+
+.dropdown-group-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+}
+
+.group-label {
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.group-name {
+  font-size: 13px;
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: none;
+  border: none;
+  color: #d1d5db;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.dropdown-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #f3f4f6;
+}
+
+.dropdown-item.danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.filter-tab {
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e5e7eb;
+}
+
+.filter-tab.active {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+.gasto-header-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.group-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.gasto-group {
+  border-left: 3px solid #22c55e;
+}
+
+.gasto-user {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.empty-filter {
+  text-align: center;
+  padding: 32px;
+  color: #94a3b8;
+  font-size: 14px;
+}
+
 /* FORM CONTAINER */
 .form-container {
   max-width: 400px;
@@ -979,6 +1346,61 @@ export default {
 
 .logout-btn i {
   font-size: 14px;
+}
+
+/* FAMILY BUTTON */
+.family-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #9ca3af;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.family-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #d1d5db;
+}
+
+.family-btn.has-family {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+}
+
+.family-btn.has-family:hover {
+  background: rgba(34, 197, 94, 0.15);
+}
+
+.family-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #22c55e;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.family-dot {
+  color: #22c55e;
+  font-size: 10px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 /* RESPONSIVE */

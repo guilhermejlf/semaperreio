@@ -7,8 +7,11 @@ from django.core.exceptions import ValidationError
 import os
 import logging
 
-from .models import Gasto
+from django.db import models
+from django.db.models import Q
+from .models import Gasto, FamilyMembership
 from .serializers import GastoSerializer
+from .permissions import GastoPermission
 
 logger = logging.getLogger(__name__)
 
@@ -88,12 +91,27 @@ def prever_gasto(request):
 # -------------------------
 # GASTOS CRUD
 # -------------------------
+def get_user_family(user):
+    """Get the family of the current user, or None."""
+    try:
+        return user.membership.family
+    except AttributeError:
+        return None
+
 @api_view(['GET', 'POST'])
 def gastos(request):
     try:
         if request.method == 'GET':
-            # Filtros opcionais — apenas gastos do usuário logado
-            queryset = Gasto.objects.filter(user=request.user)
+            user_family = get_user_family(request.user)
+            
+            if user_family:
+                # User has family: show family gastos + own gastos without family
+                queryset = Gasto.objects.filter(
+                    Q(family=user_family) | Q(user=request.user, family__isnull=True)
+                )
+            else:
+                # No family: only own gastos
+                queryset = Gasto.objects.filter(user=request.user)
             
             # Filtro por categoria
             categoria = request.query_params.get('categoria')
@@ -127,7 +145,8 @@ def gastos(request):
             serializer = GastoSerializer(data=request.data)
             
             if serializer.is_valid():
-                gasto = serializer.save(user=request.user)
+                family = get_user_family(request.user)
+                gasto = serializer.save(user=request.user, family=family)
                 return Response(
                     serializer.data, 
                     status=status.HTTP_201_CREATED
@@ -153,11 +172,19 @@ def gastos(request):
 @api_view(['GET', 'PUT', 'DELETE'])
 def gasto_detail(request, pk):
     try:
-        gasto = Gasto.objects.get(pk=pk, user=request.user)
+        gasto = Gasto.objects.get(pk=pk)
     except Gasto.DoesNotExist:
         return Response(
             {"erro": "Gasto não encontrado"}, 
             status=status.HTTP_404_NOT_FOUND
+        )
+
+    # Check permission
+    permission = GastoPermission()
+    if not permission.has_object_permission(request, None, gasto):
+        return Response(
+            {"erro": "Você não tem permissão para acessar este gasto."},
+            status=status.HTTP_403_FORBIDDEN
         )
 
     try:
@@ -166,6 +193,26 @@ def gasto_detail(request, pk):
             return Response(serializer.data)
 
         elif request.method == 'PUT':
+            # Only creator or admin (with post-join check) can edit
+            if gasto.user != request.user:
+                # Check admin permission with post-join validation
+                membership = get_user_family(request.user)
+                if not membership or membership.role != 'admin':
+                    return Response(
+                        {"erro": "Você não tem permissão para editar este gasto."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                # Check if gasto was created after user joined
+                if not FamilyMembership.objects.filter(
+                    family=membership,
+                    user=gasto.user,
+                    joined_at__lte=gasto.criado_em
+                ).exists():
+                    return Response(
+                        {"erro": "Você não pode editar gastos criados antes de seu ingresso no grupo."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+
             serializer = GastoSerializer(gasto, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
@@ -181,6 +228,24 @@ def gasto_detail(request, pk):
             )
 
         elif request.method == 'DELETE':
+            # Same permission logic as PUT
+            if gasto.user != request.user:
+                membership = get_user_family(request.user)
+                if not membership or membership.role != 'admin':
+                    return Response(
+                        {"erro": "Você não tem permissão para excluir este gasto."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+                if not FamilyMembership.objects.filter(
+                    family=membership,
+                    user=gasto.user,
+                    joined_at__lte=gasto.criado_em
+                ).exists():
+                    return Response(
+                        {"erro": "Você não pode excluir gastos criados antes de seu ingresso no grupo."},
+                        status=status.HTTP_403_FORBIDDEN
+                    )
+
             gasto.delete()
             return Response(
                 {"mensagem": "Gasto excluído com sucesso"}, 

@@ -1,11 +1,13 @@
 // Configuração da API
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
+export { API_BASE_URL }
 
 export const API_ENDPOINTS = {
   // Auth
   AUTH_LOGIN: `${API_BASE_URL}/api/auth/login/`,
   AUTH_REGISTER: `${API_BASE_URL}/api/auth/register/`,
   AUTH_REFRESH: `${API_BASE_URL}/api/auth/refresh/`,
+  AUTH_USER: `${API_BASE_URL}/api/auth/user/`,
   
   // Gastos
   GASTOS_LIST: `${API_BASE_URL}/api/gastos/`,
@@ -13,6 +15,12 @@ export const API_ENDPOINTS = {
   
   // Previsão
   PREVER_GASTO: `${API_BASE_URL}/api/prever/`,
+
+  // Family
+  FAMILY: `${API_BASE_URL}/api/family/`,
+  FAMILY_JOIN: `${API_BASE_URL}/api/family/join/`,
+  FAMILY_LEAVE: `${API_BASE_URL}/api/family/leave/`,
+  FAMILY_REGENERATE_CODE: `${API_BASE_URL}/api/family/regenerate-code/`,
 }
 
 // Token storage keys
@@ -83,6 +91,55 @@ export async function apiRequest(url, options = {}) {
     console.error('API Error:', error)
     throw error
   }
+}
+
+export async function getFamily() {
+  try {
+    return await apiRequest(API_ENDPOINTS.FAMILY)
+  } catch (error) {
+    if (error.message && error.message.includes('404')) {
+      return null
+    }
+    throw error
+  }
+}
+
+export async function createFamily(name) {
+  return await apiRequest(API_ENDPOINTS.FAMILY, {
+    method: 'POST',
+    body: JSON.stringify({ name })
+  })
+}
+
+export async function joinFamily(code) {
+  return await apiRequest(API_ENDPOINTS.FAMILY_JOIN, {
+    method: 'POST',
+    body: JSON.stringify({ code: code.toUpperCase() })
+  })
+}
+
+export async function leaveFamily() {
+  return await apiRequest(API_ENDPOINTS.FAMILY_LEAVE, {
+    method: 'POST'
+  })
+}
+
+export async function regenerateFamilyCode() {
+  return await apiRequest(API_ENDPOINTS.FAMILY_REGENERATE_CODE, {
+    method: 'POST'
+  })
+}
+
+export async function removeFamilyMember(userId) {
+  return await apiRequest(`${API_BASE_URL}/api/family/members/${userId}/`, {
+    method: 'DELETE'
+  })
+}
+
+export async function deleteFamily() {
+  return await apiRequest(API_ENDPOINTS.FAMILY, {
+    method: 'DELETE'
+  })
 }
 
 async function tryRefreshToken() {

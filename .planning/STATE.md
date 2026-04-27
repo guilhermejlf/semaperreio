@@ -28,7 +28,7 @@ See: `.planning/PROJECT.md` (updated 2026-04-24)
 
 ## What's Next
 
-Phase 2 — Family Group (compartilhamento de gastos entre familiares)
+Phase 2 — Family Group (planejamento e execução)
 
 ## Recent Commits
 
@@ -38,4 +38,7 @@ Phase 2 — Family Group (compartilhamento de gastos entre familiares)
 
 ## Active TODOs
 
-None — Phase 1 complete.
+- [x] Phase 2 discuss-phase: decisões capturadas em `02-CONTEXT.md`
+- [x] Phase 2 UI-SPEC: `02-UI-SPEC.md` gerado
+- [x] Phase 2 plan-phase: `02-01-PLAN.md` (backend) e `02-02-PLAN.md` (frontend) gerados
+- [ ] Phase 2 execute-phase: implementar Family models, endpoints, e UI drawer

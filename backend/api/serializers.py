@@ -3,9 +3,12 @@ from django.utils import timezone
 from .models import Gasto
 
 class GastoSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    is_group = serializers.SerializerMethodField()
+
     class Meta:
         model = Gasto
-        fields = ['id', 'user', 'valor', 'categoria', 'descricao', 'data', 'criado_em', 'atualizado_em']
+        fields = ['id', 'user', 'valor', 'categoria', 'descricao', 'data', 'user_name', 'is_group', 'criado_em', 'atualizado_em']
         read_only_fields = ['id', 'user', 'criado_em', 'atualizado_em']
     
     def to_representation(self, instance):
@@ -50,3 +53,9 @@ class GastoSerializer(serializers.ModelSerializer):
         if value and len(value.strip()) == 0:
             return ""
         return value.strip() if value else value
+
+    def get_user_name(self, obj):
+        return obj.user.username if obj.user else None
+
+    def get_is_group(self, obj):
+        return obj.family is not None
