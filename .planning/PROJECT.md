@@ -10,36 +10,61 @@ Familiares conseguem registrar e visualizar todos os gastos do lar em um só lug
 
 ## Requirements
 
-### Validated
+### Validated (v1.0 — shipped 2026-04-30)
 
 - ✓ Cadastro de gastos com categorias — Phase 0 (código base existente)
 - ✓ Dashboard com gráficos (pizza + linha) e estatísticas — Phase 0 (código base existente)
 - ✓ Previsão de gastos por mês via ML — Phase 0 (código base existente, modelo fixo)
 - ✓ Interface responsiva com tema escuro — Phase 0 (código base existente)
+- ✓ **AUTH-01**: Usuários podem criar conta e fazer login (JWT) — v1.0
+- ✓ **AUTH-02**: Gastos ficam vinculados ao usuário logado — v1.0
+- ✓ **AUTH-03**: Usuários podem pertencer a um "grupo familiar" (compartilhar gastos) — v1.0
+- ✓ **DASH-01**: Dashboard exibe gastos filtrados por período (mês/ano) — v1.0
+- ✓ **DASH-02**: Ranking de categorias por valor total — v1.0
+- ✓ **DASH-03**: Comparativo mês atual vs. mês anterior — v1.0
+- ✓ **ML-01**: Modelo de previsão treinado com dados reais do usuário/família — v1.0
+- ✓ **ML-02**: Previsão considera categoria (não apenas mês) — v1.0
+- ✓ **EXP-01**: Exportar gastos para CSV/Excel — v1.0
 
-### Active
+### Active (v2.0)
 
-- [ ] **AUTH-01**: Usuários podem criar conta e fazer login (JWT)
-- [ ] **AUTH-02**: Gastos ficam vinculados ao usuário logado
-- [ ] **AUTH-03**: Usuários podem pertencer a um "grupo familiar" (compartilhar gastos)
-- [ ] **DASH-01**: Dashboard exibe gastos filtrados por período (mês/ano)
-- [ ] **DASH-02**: Ranking de categorias por valor total
-- [ ] **DASH-03**: Comparativo mês atual vs. mês anterior
-- [ ] **ML-01**: Modelo de previsão treinado com dados reais do usuário/família
-- [ ] **ML-02**: Previsão considera categoria (não apenas mês)
-- [ ] **EXP-01**: Exportar gastos para CSV/Excel
+- [ ] **BUDG-01**: Definir meta de gasto mensal por categoria
+- [ ] **BUDG-02**: Dashboard exibe progresso da meta (barra visual)
+- [ ] **BUDG-03**: Alerta visual quando gasto ultrapassa 80% da meta
+- [ ] **NOTF-01**: Lembrete semanal para registrar gastos
+- [ ] **NOTF-02**: Alerta quando gasto do mês ultrapassa média histórica
+- [ ] **INFR-01**: PostgreSQL como banco de produção
+- [ ] **INFR-02**: CI/CD com GitHub Actions
+- [ ] **INFR-03**: Deploy automatizado backend + frontend
 
 ### Out of Scope
 
-- Pagamentos / integração bancária — muito complexo para MVP, entrada manual suficiente
-- Orçamentos / metas de gasto — pode ser adicionado futuramente
-- Notificações push/email — não essencial para análise de gastos
-- PWA offline-first — web responsive já atende o uso case
-- Multi-moeda — foco em BRL (Brasil)
+| Feature | Reason |
+|---------|--------|
+| Integração bancária (Open Banking) | Complexidade regulatória e técnica muito alta para MVP |
+| Multi-moeda (USD, EUR) | Público-alvo brasileiro; BRL suficiente |
+| PWA com cache offline | Web responsive atende; offline não é crítico para registro ocasional |
+| Chat entre familiares | Fora do escopo de controle de gastos |
 
 ## Context
 
-Código base existente em Python/Django (backend) e Vue 3 + Vite (frontend). O sistema já possui CRUD de gastos, dashboard com Chart.js e previsão via regressão linear. O maior gap é a ausência de autenticação — todos os gastos são públicos. O modelo ML usa dados hardcoded e não aprende com os gastos reais cadastrados.
+Sistema completo de controle de gastos domésticos com autenticação JWT, grupos familiares, dashboard com filtros por período (mês/ano), ranking de categorias, comparativo mês a mês, previsão via ML com dados reais, e exportação CSV/Excel. Backend Django + DRF, frontend Vue 3 + Vite, tema escuro, responsive. MVP v1.0 entregue com sucesso.
+
+### Tech Stack (v1.0)
+
+- **Backend**: Django 5.x + Django REST Framework + djangorestframework-simplejwt
+- **Frontend**: Vue 3 (Options API) + Vite + Chart.js + PrimeIcons
+- **ML**: scikit-learn (LinearRegression por categoria)
+- **Banco**: SQLite (MVP), PostgreSQL planejado para produção
+- **Export**: openpyxl (XLSX), csv/StreamingHttpResponse (CSV)
+
+### Known Issues / Tech Debt
+
+- Options API no Vue — Composition API seria mais moderna, mas MVP usou existente
+- SQLite para produção — deve migrar para PostgreSQL antes do deploy real
+- Modelo ML treinado on-demand — não persistido; recomenda-se cache ou Celery para datasets grandes
+- Falta paginação completa com metadados (count/next/previous) — implementado apenas limite simples (50 itens)
+- Sem testes automatizados — apenas testes manuais realizados
 
 ## Constraints
 

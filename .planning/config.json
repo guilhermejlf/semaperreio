@@ -1,9 +1,11 @@
 {
   "project_name": "Sem Aperreio",
   "initialized": "2026-04-24",
-  "current_milestone": "v1",
-  "current_phase": "01-authentication",
+  "current_milestone": "v1.0",
+  "current_phase": null,
   "model_profile": "balanced",
   "auto_commit": false,
-  "language": "pt-BR"
+  "language": "pt-BR",
+  "last_milestone_completed": "v1.0",
+  "last_milestone_date": "2026-04-30"
 }

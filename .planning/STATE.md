@@ -1,45 +1,53 @@
 # Project State
 
-## Current Phase
+## Current Milestone
 
-**Phase:** Phase 3 — Dashboard Inteligente com Filtros (completed)
-**Previous Phases:** Phase 1 (completed), Phase 2 (completed)
-**Status:** Verified — all charts, filters, and comparison card working
+**Milestone:** v1.0 MVP — SHIPPED (2026-04-30)
+**Tag:** `v1.0`
+**Next Milestone:** v2.0 — Orçamento, Notificações e Deploy
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-04-24)
+See: `.planning/PROJECT.md` (updated 2026-04-30)
+See: `.planning/MILESTONES.md` (v1.0 retrospective)
 
 **Core value:** Familiares conseguem registrar e visualizar todos os gastos do lar em um só lugar, com análises claras que revelam padrões de consumo e oportunidades de economia.
 
-## What's Done
+## v1.0 Shipped
 
-- [x] Código base mapeado (`.planning/codebase/`)
-- [x] `PROJECT.md` criado
-- [x] `REQUIREMENTS.md` criado
-- [x] `ROADMAP.md` criado
-- [x] Phase 1 planejada (`01-01-PLAN.md`, `01-02-PLAN.md`)
-- [x] Discuss-phase completada — decisões capturadas em `01-CONTEXT.md`
-- [x] Planos atualizados com decisões do discuss-phase
-- [x] UI-SPEC gerado (`01-UI-SPEC.md`)
-- [x] **Backend JWT:** djangorestframework-simplejwt instalado, endpoints `/auth/register/`, `/auth/login/`, `/auth/refresh/`, Gasto model com FK User, `IsAuthenticated` em todas as views, filtros por `request.user`
-- [x] **Frontend Auth:** `AuthView.vue` com tabs (login/registro), `LoginForm.vue`, `RegisterForm.vue`, token storage `sa_access_token`/`sa_refresh_token`, auto-refresh em 401, logout button, integração condicional no `App.vue`
-- [x] **Database:** Reset SQLite, migrations recriadas, testes manuais OK (cadastro, login, add gasto, dashboard charts, logout, re-login)
-- [x] **Bugfix:** Chart.js reactivity loop resolvido com deep-clone e deferred init
+- [x] **Phase 1 — Autenticação JWT** (2/2 plans, SUMMARY complete)
+- [x] **Phase 2 — Grupo Familiar** (2/2 plans, SUMMARY complete)
+- [x] **Phase 3 — Dashboard Inteligente** (2/2 plans, SUMMARY complete)
+- [x] **Phase 4 — ML + Exportação** (1/1 plan, SUMMARY complete)
+- [x] Git tag `v1.0` created
+- [x] Archives created: `.planning/milestones/v1.0-ROADMAP.md`, `.planning/milestones/v1.0-REQUIREMENTS.md`
+- [x] MILESTONES.md created with retrospective
+- [x] PROJECT.md updated with validated requirements
+- [x] ROADMAP.md reorganized with milestone grouping
 
 ## What's Next
 
-Phase 2 — Family Group (planejamento e execução)
+Milestone v2.0 — iniciar planejamento:
+
+1. `/gsd-new-milestone "v2.0 Production"` — questioning → research → requirements → roadmap
+2. Phase 5 — Orçamento e Metas (BUDG-01/02/03)
+3. Phase 6 — Notificações e Deploy (NOTF-01/02, INFR-01/02/03)
 
 ## Recent Commits
 
-- Initial project initialization (2026-04-24)
-- Codebase mapping completed (2026-04-24)
-- Phase 1 — JWT Authentication implemented (2026-04-27)
+- `8a0ac9f` feat: implementa fases 1-3 do v1(auth, family, dashboard) — 2026-04-30
+- `fcf429b` Initial commit - projeto limpo — 2026-04-24
 
 ## Active TODOs
 
-- [x] Phase 2 discuss-phase: decisões capturadas em `02-CONTEXT.md`
-- [x] Phase 2 UI-SPEC: `02-UI-SPEC.md` gerado
-- [x] Phase 2 plan-phase: `02-01-PLAN.md` (backend) e `02-02-PLAN.md` (frontend) gerados
-- [ ] Phase 2 execute-phase: implementar Family models, endpoints, e UI drawer
+- [ ] `/gsd-new-milestone` — iniciar v2.0
+- [ ] Phase 5 — Budget goals backend + frontend
+- [ ] Phase 6 — Notifications (email/push) + PostgreSQL + CI/CD + deploy
+
+## Tech Debt / Notes
+
+- Options API no Vue — Composition API migration candidate for v2
+- SQLite → PostgreSQL migration required before production deploy
+- ML model on-demand training — consider Celery/persisted model for large datasets
+- No automated tests — only manual testing performed
+- GAST-04 pagination partial (simple limit, no full metadata)
