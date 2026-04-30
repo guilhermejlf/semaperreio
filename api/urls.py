@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import prever_gasto, gastos, gasto_detail, dashboard, receitas, receita_detail, exportar_csv, exportar_xlsx
+from .views import prever_gasto, gastos, gasto_detail, dashboard, receitas, receita_detail, exportar_csv, exportar_xlsx, listar_metas, criar_meta, atualizar_meta, deletar_meta
 from .views_auth import RegisterView, LoginView, RefreshView, UserView
 from .views_family import FamilyViewSet
 
@@ -20,5 +20,9 @@ urlpatterns = [
     path("dashboard/", dashboard, name="dashboard"),
     path("receitas/", receitas, name="receitas_list"),
     path("receitas/<int:pk>/", receita_detail, name="receita_detail"),
+    path("metas/", listar_metas, name="listar_metas"),
+    path("metas/criar/", criar_meta, name="criar_meta"),
+    path("metas/<int:pk>/", atualizar_meta, name="atualizar_meta"),
+    path("metas/<int:pk>/deletar/", deletar_meta, name="deletar_meta"),
     path("", include(router.urls)),
 ]

@@ -10,8 +10,8 @@ from django.db import models
 from django.db.models import Q, Sum, Count, Max
 from django.db.models.functions import Coalesce, TruncMonth
 from decimal import Decimal
-from .models import Gasto, FamilyMembership, Receita
-from .serializers import GastoSerializer, ReceitaSerializer
+from .models import Gasto, FamilyMembership, Receita, Family, MetaGasto
+from .serializers import GastoSerializer, ReceitaSerializer, MetaGastoSerializer
 from .permissions import GastoPermission
 
 logger = logging.getLogger(__name__)
@@ -617,6 +617,9 @@ def dashboard(request):
         dias_no_mes = monthrange(ano_int, mes_int)[1]
         media_diaria = float(total_mes) / dias_no_mes if dias_no_mes > 0 else 0.0
 
+        # Metas de gasto
+        metas_context = _build_metas_context(request.user, mes_int, ano_int)
+
         return Response({
             "periodo": {
                 "mes": mes_int,
@@ -638,7 +641,8 @@ def dashboard(request):
             "quantidade_pendentes": quantidade_pendentes,
             "saldo": float(saldo),
             "saldo_projetado": float(saldo_projetado),
-            "previsao_mensagem": previsao_mensagem
+            "previsao_mensagem": previsao_mensagem,
+            "metas": metas_context
         })
 
     except Exception as e:
@@ -836,14 +840,170 @@ def exportar_xlsx(request):
         buffer = io.BytesIO()
         wb.save(buffer)
         buffer.seek(0)
-
-        response = HttpResponse(buffer.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = 'attachment; filename="gastos.xlsx"'
-        return response
-
-    except Exception as e:
         logger.error(f"Erro na exportação XLSX: {e}")
         return Response(
             {"erro": "Erro interno no servidor"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+# -------------------------
+# METAS DE GASTO (Budget Goals)
+# -------------------------
+
+def _get_meta_status(pct):
+    if pct > 100:
+        return 'critical'
+    elif pct > 80:
+        return 'danger'
+    elif pct > 50:
+        return 'warning'
+    return 'ok'
+
+
+def _get_gasto_realizado(user, categoria, mes, ano):
+    """Calcula o total gasto pelo usuário em uma categoria/mês/ano."""
+    gastos = Gasto.objects.filter(
+        user=user,
+        data_competencia__month=mes,
+        data_competencia__year=ano
+    )
+    if categoria:
+        gastos = gastos.filter(categoria=categoria)
+    total = gastos.aggregate(total=Sum('valor'))['total'] or 0
+    return round(float(total), 2)
+
+
+@api_view(['GET'])
+def listar_metas(request):
+    """Lista todas as metas do usuário para um mês/ano."""
+    try:
+        mes = int(request.query_params.get('mes', 0))
+        ano = int(request.query_params.get('ano', 0))
+        if not (1 <= mes <= 12 and ano > 2000):
+            return Response(
+                {"erro": "Mês (1-12) e ano (>2000) são obrigatórios"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        metas = MetaGasto.objects.filter(user=request.user, mes=mes, ano=ano)
+        serializer = MetaGastoSerializer(metas, many=True)
+        return Response({"metas": serializer.data, "mes": mes, "ano": ano})
+    except Exception as e:
+        logger.error(f"Erro ao listar metas: {e}")
+        return Response(
+            {"erro": "Erro interno no servidor"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+def criar_meta(request):
+    """Cria uma nova meta de gasto."""
+    try:
+        categoria = request.data.get('categoria') or None
+        mes = int(request.data.get('mes', 0))
+        ano = int(request.data.get('ano', 0))
+        valor_meta = float(request.data.get('valor_meta', 0))
+
+        if not (1 <= mes <= 12 and ano > 2000):
+            return Response(
+                {"erro": "Mês (1-12) e ano (>2000) são obrigatórios"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if valor_meta <= 0:
+            return Response(
+                {"erro": "Valor da meta deve ser maior que zero"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Verificar duplicata
+        if MetaGasto.objects.filter(user=request.user, categoria=categoria, mes=mes, ano=ano).exists():
+            return Response(
+                {"erro": "Já existe uma meta para esta categoria neste período"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        meta = MetaGasto.objects.create(
+            user=request.user,
+            categoria=categoria,
+            mes=mes,
+            ano=ano,
+            valor_meta=valor_meta
+        )
+        serializer = MetaGastoSerializer(meta)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        logger.error(f"Erro ao criar meta: {e}")
+        return Response(
+            {"erro": "Erro interno no servidor"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['PUT'])
+def atualizar_meta(request, pk):
+    """Atualiza o valor de uma meta existente."""
+    try:
+        meta = MetaGasto.objects.get(pk=pk, user=request.user)
+        valor_meta = float(request.data.get('valor_meta', 0))
+
+        if valor_meta <= 0:
+            return Response(
+                {"erro": "Valor da meta deve ser maior que zero"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        meta.valor_meta = valor_meta
+        meta.save()
+        serializer = MetaGastoSerializer(meta)
+        return Response(serializer.data)
+    except MetaGasto.DoesNotExist:
+        return Response(
+            {"erro": "Meta não encontrada"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        logger.error(f"Erro ao atualizar meta: {e}")
+        return Response(
+            {"erro": "Erro interno no servidor"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['DELETE'])
+def deletar_meta(request, pk):
+    """Deleta uma meta de gasto."""
+    try:
+        meta = MetaGasto.objects.get(pk=pk, user=request.user)
+        meta.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    except MetaGasto.DoesNotExist:
+        return Response(
+            {"erro": "Meta não encontrada"},
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        logger.error(f"Erro ao deletar meta: {e}")
+        return Response(
+            {"erro": "Erro interno no servidor"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+def _build_metas_context(user, mes, ano):
+    """Constrói o contexto de metas para o dashboard."""
+    metas = MetaGasto.objects.filter(user=user, mes=mes, ano=ano)
+    
+    geral = None
+    por_categoria = []
+    
+    for meta in metas:
+        serializer = MetaGastoSerializer(meta)
+        data = serializer.data
+        if meta.categoria is None:
+            geral = data
+        else:
+            por_categoria.append(data)
+    
+    return {"geral": geral, "por_categoria": por_categoria}

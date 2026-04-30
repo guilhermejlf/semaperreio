@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.utils import timezone
-from .models import Gasto, Receita
+from .models import Gasto, Receita, MetaGasto
 
 class GastoSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
@@ -121,3 +121,53 @@ class ReceitaSerializer(serializers.ModelSerializer):
 
     def get_is_group(self, obj):
         return obj.family is not None
+
+
+class MetaGastoSerializer(serializers.ModelSerializer):
+    gasto_realizado = serializers.SerializerMethodField()
+    percentual_usado = serializers.SerializerMethodField()
+    status = serializers.SerializerMethodField()
+    categoria_nome = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MetaGasto
+        fields = ['id', 'categoria', 'categoria_nome', 'mes', 'ano', 'valor_meta', 'gasto_realizado', 'percentual_usado', 'status', 'criado_em', 'atualizado_em']
+        read_only_fields = ['id', 'criado_em', 'atualizado_em']
+
+    def get_gasto_realizado(self, obj):
+        from django.db.models import Sum
+        gastos = Gasto.objects.filter(
+            user=obj.user,
+            categoria=obj.categoria if obj.categoria else None,
+            data_competencia__month=obj.mes,
+            data_competencia__year=obj.ano
+        )
+        if obj.categoria is None:
+            gastos = Gasto.objects.filter(
+                user=obj.user,
+                data_competencia__month=obj.mes,
+                data_competencia__year=obj.ano
+            )
+        total = gastos.aggregate(total=Sum('valor'))['total'] or 0
+        return round(float(total), 2)
+
+    def get_percentual_usado(self, obj):
+        gasto = self.get_gasto_realizado(obj)
+        if obj.valor_meta and float(obj.valor_meta) > 0:
+            return round((gasto / float(obj.valor_meta)) * 100, 1)
+        return 0.0
+
+    def get_status(self, obj):
+        pct = self.get_percentual_usado(obj)
+        if pct > 100:
+            return 'critical'
+        elif pct > 80:
+            return 'danger'
+        elif pct > 50:
+            return 'warning'
+        return 'ok'
+
+    def get_categoria_nome(self, obj):
+        if obj.categoria:
+            return obj.get_categoria_display()
+        return 'Geral'

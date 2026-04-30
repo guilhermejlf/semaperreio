@@ -136,3 +136,35 @@ class Receita(models.Model):
 
     def __str__(self):
         return f"R$ {self.valor} - {self.descricao or 'Sem descrição'}"
+
+
+class MetaGasto(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='metas')
+    categoria = models.CharField(
+        max_length=50,
+        choices=Gasto.CATEGORIAS_CHOICES,
+        null=True,
+        blank=True,
+        help_text="Null = meta geral (total do mês)"
+    )
+    mes = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxLengthValidator(2)]
+    )
+    ano = models.PositiveSmallIntegerField()
+    valor_meta = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(0.01, message="O valor da meta deve ser maior que zero")]
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Meta de Gasto'
+        verbose_name_plural = 'Metas de Gastos'
+        unique_together = ['user', 'categoria', 'mes', 'ano']
+        ordering = ['-ano', '-mes', 'categoria']
+
+    def __str__(self):
+        cat = self.get_categoria_display() if self.categoria else "Geral"
+        return f"Meta {cat} - {self.mes}/{self.ano}: R$ {self.valor_meta}"
