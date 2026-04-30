@@ -37,7 +37,7 @@
 See archive: `.planning/milestones/v1.0-ROADMAP.md`
 </details>
 
-### Phase 5 — Orçamento e Metas
+### Phase 5 — Orçamento e Metas ✅
 
 **Goal:** Usuários podem definir metas de gasto por categoria e acompanhar progresso no dashboard.
 
@@ -46,8 +46,13 @@ See archive: `.planning/milestones/v1.0-ROADMAP.md`
 **Requirements:** BUDG-01, BUDG-02, BUDG-03
 
 **Deliverables:**
-- Modelo `Budget` (categoria, valor meta, mês/ano, usuário/família)
-- Endpoint CRUD de metas
+- ✅ Modelo `MetaGasto` (categoria, valor meta, mês/ano, usuário)
+- ✅ Endpoint CRUD `/api/metas/` com campos computados (gasto_realizado, percentual, status)
+- ✅ Dashboard integration — `/api/dashboard/` retorna `metas` (geral + por_categoria)
+- ✅ Frontend: `BudgetView.vue` com seletor de período, meta geral, grid de categorias
+- ✅ Frontend: `BudgetEditModal.vue` com confirmação ao editar meta com gastos existentes
+- ✅ Dashboard mini block — progress bars de metas entre comportamento e gráficos
+- ✅ App.vue: nova aba "Metas" (`pi pi-bullseye`) com `BudgetView`
 - Dashboard: barra de progresso por categoria
 - Alerta visual quando gasto ultrapassa 80% da meta
 
