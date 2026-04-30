@@ -66,6 +66,23 @@ Sistema completo de controle de gastos domésticos com autenticação JWT, grupo
 - Falta paginação completa com metadados (count/next/previous) — implementado apenas limite simples (50 itens)
 - Sem testes automatizados — apenas testes manuais realizados
 
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
 ## Constraints
 
 - **Tech Stack**: Manter Django + DRF + Vue 3 + Vite (código já existe)
@@ -85,5 +102,22 @@ Sistema completo de controle de gastos domésticos com autenticação JWT, grupo
 | JWT ao invés de session cookies | Frontend SPA separado do backend; JWT facilita CORS e mobile futuro | — Pending |
 | Grupo familiar (User → Family) | Um gasto pertence a um User que pertence a uma Family; permite múltiplos usuários verem os mesmos gastos | — Pending |
 
+## Current Milestone: v2.0 Production
+
+**Goal:** Transformar o MVP em produção com orçamento/metas, notificações e infraestrutura de deploy.
+
+**Target features:**
+- Orçamento e metas de gasto por categoria (BUDG-01/02/03)
+- Notificações push/email (NOTF-01/02)
+- PostgreSQL como banco de produção (INFR-01)
+- CI/CD com GitHub Actions (INFR-02)
+- Deploy automatizado backend + frontend (INFR-03)
+
+**Key context:**
+- SQLite → PostgreSQL migração requerida antes do deploy
+- Sem testes automatizados — CI/CD deve incluir testes mínimos
+- Options API no Vue pode ser mantido ou migrado no v2
+- Deploy: Render/Railway (backend), Netlify/Vercel (frontend)
+
 ---
-*Last updated: 2026-04-24 after /gsd-new-project brownfield initialization*
+*Last updated: 2026-04-30 after v1.0 milestone completion and v2.0 initialization*
