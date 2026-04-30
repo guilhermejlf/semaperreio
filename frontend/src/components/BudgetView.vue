@@ -172,10 +172,11 @@ export default {
       return this.metaGeral || this.metasPorCategoria.length > 0
     },
     metaGeral() {
-      return this.metasData.geral
+      return this.metasData && this.metasData.geral ? this.metasData.geral : null
     },
     metasPorCategoria() {
-      return [...this.metasData.por_categoria].sort((a, b) => b.percentual_usado - a.percentual_usado)
+      const lista = (this.metasData && this.metasData.por_categoria) ? this.metasData.por_categoria : []
+      return [...lista].sort((a, b) => (b.percentual_usado || 0) - (a.percentual_usado || 0))
     }
   },
   mounted() {
@@ -194,7 +195,16 @@ export default {
       try {
         this.loading = true
         const data = await fetchMetas(this.periodo.mes, this.periodo.ano)
-        this.metasData = data.metas || { geral: null, por_categoria: [] }
+        const metas = data.metas || { geral: null, por_categoria: [] }
+        // Normaliza: se API retornar lista plana, converte para objeto
+        if (Array.isArray(metas)) {
+          this.metasData = {
+            geral: metas.find(m => m.categoria === null) || null,
+            por_categoria: metas.filter(m => m.categoria !== null)
+          }
+        } else {
+          this.metasData = metas
+        }
       } catch (error) {
         console.error('Erro ao carregar metas:', error)
         this.metasData = { geral: null, por_categoria: [] }

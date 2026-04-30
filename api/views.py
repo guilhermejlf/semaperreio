@@ -840,6 +840,15 @@ def exportar_xlsx(request):
         buffer = io.BytesIO()
         wb.save(buffer)
         buffer.seek(0)
+
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename=gastos.xlsx'
+        return response
+
+    except Exception as e:
         logger.error(f"Erro na exportação XLSX: {e}")
         return Response(
             {"erro": "Erro interno no servidor"},
@@ -886,9 +895,8 @@ def listar_metas(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        metas = MetaGasto.objects.filter(user=request.user, mes=mes, ano=ano)
-        serializer = MetaGastoSerializer(metas, many=True)
-        return Response({"metas": serializer.data, "mes": mes, "ano": ano})
+        metas_context = _build_metas_context(request.user, mes, ano)
+        return Response({"metas": metas_context, "mes": mes, "ano": ano})
     except Exception as e:
         logger.error(f"Erro ao listar metas: {e}")
         return Response(
