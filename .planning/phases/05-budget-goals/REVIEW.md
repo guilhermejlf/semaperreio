@@ -27,32 +27,32 @@ Actually: the first query has `categoria=obj.categoria if obj.categoria else Non
 
 ---
 
-### BUG-3: DashboardCharts mini-block uses undefined `formatarValor`
+### BUG-3: DashboardCharts mini-block uses undefined `formatarValor` ✅ FIXED
 **File:** `frontend/src/components/DashboardCharts.vue`  
 **Severity:** 🟡 Medium  
 **Issue:** The mini budget block template calls `formatarValor(meta.gasto_realizado)` and `formatarValor(meta.valor_meta)` but `DashboardCharts` does not define this method. Vue will silently fail or show `NaN`/`undefined`.
 
-**Fix:** Add `formatarValor(valor)` method to DashboardCharts or use inline `toLocaleString`.
+**Fix:** `formatarValor(valor)` method exists at line 498 — converts to BRL currency with `toLocaleString('pt-BR')`. Verified working.
 
 ---
 
-### BUG-4: `abrirCriarCategoria` doesn't pass category list of missing categories
-**File:** `frontend/src/components/BudgetView.vue`  
+### BUG-4: `abrirCriarCategoria` doesn't pass category list of missing categories ✅ FIXED
+**File:** `frontend/src/components/BudgetView.vue` + `BudgetEditModal.vue`  
 **Severity:** 🟡 Medium  
 **Issue:** The "+ Adicionar Meta de Categoria" card opens a modal with empty category selector. User has to pick from all categories even those that already have budgets (which will fail on save due to unique constraint).
 
-**Fix:** Filter out categories that already have budgets from the selector.
+**Fix:** `BudgetView.vue:192-195` computes `categoriasUsadas` from existing metas and passes it to `BudgetEditModal.vue`. `BudgetEditModal.vue:143-148` filters `CATEGORIA_OPTIONS` to exclude used categories via `categoriasDisponiveis` computed property. Verified working.
 
 ---
 
 ## UX Issues
 
-### UX-1: No delete button on BudgetView
+### UX-1: No delete button on BudgetView ✅ FIXED
 **File:** `frontend/src/components/BudgetView.vue`  
 **Severity:** 🟡 Medium  
 **Issue:** Users can create and edit budgets but cannot delete them from the UI. Must use API or admin.
 
-**Fix:** Add delete button (with confirmation) on each budget card.
+**Fix:** Delete buttons exist on both meta geral card (line 49-51) and each categoria card (line 92-94). Uses `pi pi-trash` icon with `$confirm.require()` confirmation dialog. Calls `deleteMeta(meta.id)` from `api.js`. Verified working.
 
 ---
 
@@ -107,6 +107,6 @@ Actually: the first query has `categoria=obj.categoria if obj.categoria else Non
 - [x] API endpoints secure? Yes, via DRF default auth
 - [x] Frontend renders without errors? Yes (after fixes)
 - [x] Dashboard integration works? Yes (after null-safety fix)
-- [ ] Delete functionality? Missing
-- [ ] Category filtering in create? Missing
-- [ ] `formatarValor` in DashboardCharts? Missing
+- [x] Delete functionality? Implemented (BudgetView.vue lines 49-51, 92-94, onDeleteMeta:295-317)
+- [x] Category filtering in create? Implemented (BudgetEditModal.vue lines 143-148 via categoriasUsadas prop)
+- [x] `formatarValor` in DashboardCharts? Implemented (line 498)

@@ -126,6 +126,7 @@ class Receita(models.Model):
         validators=[MaxLengthValidator(200, message="Descrição muito longa")]
     )
     data = models.DateField()
+    data_competencia = models.DateField(null=True, blank=True, help_text='Mês de referência da receita (padrão: data do recebimento)')
     criado_em = models.DateTimeField(auto_now_add=True)
     atualizado_em = models.DateTimeField(auto_now=True)
 

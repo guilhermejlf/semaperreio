@@ -9,28 +9,26 @@
     <!-- Sem Grupo -->
     <div v-else-if="pageState === 'no-group'" class="family-empty">
       <i class="pi pi-users empty-icon"></i>
-      <p class="empty-text">Você não está em nenhum grupo familiar.</p>
+      <h3 class="empty-title">Nenhum grupo criado</h3>
       <p class="empty-sub">Crie um grupo ou entre em um existente para compartilhar gastos com sua família.</p>
 
-      <Button
-        label="Criar Grupo Familiar"
-        icon="pi pi-plus"
-        severity="success"
-        class="w-full"
+      <button
+        class="btn-primary"
         @click="pageState = 'create-form'"
-      />
+      >
+        Criar Grupo Familiar
+      </button>
 
       <div class="divider">
         <span>ou</span>
       </div>
 
-      <Button
-        label="Entrar com Código"
-        severity="success"
-        outlined
-        class="w-full"
+      <button
+        class="btn-primary-outlined"
         @click="pageState = 'join-form'"
-      />
+      >
+        Entrar com Código
+      </button>
     </div>
 
     <!-- Form Criar Grupo -->
@@ -48,13 +46,13 @@
         />
       </div>
 
-      <Button
-        label="Criar Grupo"
-        severity="success"
-        class="w-full"
-        :loading="actionLoading"
+      <button
+        class="btn-primary"
+        :disabled="actionLoading"
         @click="handleCreate"
-      />
+      >
+        {{ actionLoading ? 'Criando...' : 'Criar Grupo' }}
+      </button>
       <button class="cancel-link" @click="pageState = 'no-group'">
         Cancelar
       </button>
@@ -77,13 +75,13 @@
         />
       </div>
 
-      <Button
-        label="Entrar no Grupo"
-        severity="success"
-        class="w-full"
-        :loading="actionLoading"
+      <button
+        class="btn-primary"
+        :disabled="actionLoading"
         @click="handleJoin"
-      />
+      >
+        {{ actionLoading ? 'Entrando...' : 'Entrar no Grupo' }}
+      </button>
       <button class="cancel-link" @click="pageState = 'no-group'">
         Cancelar
       </button>
@@ -109,16 +107,14 @@
         <p class="expiration-text" :class="codeExpiringSoon ? 'expiring' : ''">
           {{ expirationText }}
         </p>
-        <Button
+        <button
           v-if="isAdmin"
-          label="Gerar Novo Código"
-          severity="success"
-          outlined
-          size="small"
-          class="w-full mt-2"
-          :loading="actionLoading"
+          class="btn-primary btn-sm mt-2"
+          :disabled="actionLoading"
           @click="handleRegenerateCode"
-        />
+        >
+          {{ actionLoading ? 'Gerando...' : 'Gerar Novo Código' }}
+        </button>
       </div>
 
       <!-- Membros -->
@@ -156,31 +152,28 @@
 
       <!-- Ações Admin -->
       <div v-if="isAdmin" class="section actions">
-        <Button
-          label="Excluir Grupo"
-          severity="danger"
-          outlined
-          class="w-full"
+        <button
+          class="btn-danger-outlined"
           @click="confirmDeleteGroup"
-        />
+        >
+          Excluir Grupo
+        </button>
       </div>
 
       <!-- Sair do Grupo -->
       <div class="section actions">
-        <Button
-          label="Sair do Grupo"
-          severity="danger"
-          outlined
-          class="w-full"
+        <button
+          class="btn-danger-outlined"
           @click="confirmLeave"
-        />
+        >
+          Sair do Grupo
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import Button from 'primevue/button'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Toast from 'primevue/toast'
 import BaseCard from './BaseCard.vue'
@@ -196,7 +189,6 @@ import {
 export default {
   name: 'FamilyView',
   components: {
-    Button,
     ConfirmDialog,
     Toast,
     BaseCard
@@ -436,11 +428,11 @@ export default {
   color: #4b5563;
 }
 
-.empty-text {
-  color: #d1d5db;
+.empty-title {
+  color: #e5e7eb;
   font-weight: 500;
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 24px;
 }
 
 .empty-sub {
@@ -627,4 +619,88 @@ export default {
 .w-full {
   width: 100%;
 }
+
+/* Primary buttons matching 'Adicionar Primeiro Gasto' pattern */
+.btn-primary {
+  background: linear-gradient(90deg, #22c55e, #3b82f6);
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+  align-self: center;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary-outlined {
+  background: transparent;
+  color: white;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  padding: 15px 30px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  align-self: center;
+}
+
+.btn-primary-outlined::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 2px;
+  background: linear-gradient(90deg, #22c55e, #3b82f6);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.btn-primary-outlined:hover {
+  background: rgba(34, 197, 94, 0.08);
+  transform: translateY(-2px);
+}
+
+.btn-sm {
+  padding: 10px 20px;
+  font-size: 14px;
+  border-radius: 10px;
+}
+
+.btn-danger-outlined {
+  background: transparent;
+  color: #ef4444;
+  border: 2px solid #ef4444;
+  border-radius: 12px;
+  padding: 15px 30px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-self: center;
+}
+
+.btn-danger-outlined:hover {
+  background: rgba(239, 68, 68, 0.1);
+  transform: translateY(-2px);
+}
+
 </style>

@@ -2,11 +2,11 @@
 
 ## Current Milestone
 
-**Milestone:** v2.0 Production — Defining requirements
-**Phase:** Not started
+**Milestone:** v2.0 Production — Phase 5 complete
+**Phase:** 6 — Notificações e Deploy
 **Plan:** —
-**Status:** Defining requirements
-**Last activity:** 2026-04-30 — Milestone v2.0 started
+**Status:** Phase 5 shipped, Phase 6 planning
+**Last activity:** 2026-05-04 — Phase 5 completed (budget goals + alerts + UI polish)
 
 ## Project Reference
 
@@ -24,7 +24,7 @@ See: `.planning/MILESTONES.md` (v1.0 retrospective)
 Milestone v2.0 — Planejamento em andamento:
 
 1. ✅ `/gsd-new-milestone "v2.0 Production"` — iniciado
-2. ⏳ Phase 5 — Orçamento e Metas (BUDG-01/02/03)
+2. ✅ Phase 5 — Orçamento e Metas (BUDG-01/02/03) — SHIPPED 2026-05-04
 3. ⏳ Phase 6 — Notificações e Deploy (NOTF-01/02, INFR-01/02/03)
 
 ## Recent Commits
@@ -42,6 +42,7 @@ Milestone v2.0 — Planejamento em andamento:
 - [x] Phase 5 plan-phase: `05-01-PLAN.md` (backend) e `05-02-PLAN.md` (frontend) criados
 - [x] Phase 5 ui-spec: `05-UI-SPEC.md` criado
 - [x] Phase 5 execute-phase: implementar Budget models, endpoints, e UI ✅
+- [x] Phase 5 review: bugs fixed (formatarValor, category filtering, delete UI)
 - [ ] Phase 6 — Notifications (email/push) + PostgreSQL + CI/CD + deploy
 
 ## Accumulated Context

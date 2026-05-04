@@ -94,8 +94,9 @@ class FamilyViewSet(viewsets.ViewSet):
         serializer = FamilyDetailSerializer(family, context={'request': request})
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    def destroy(self, request):
-        """DELETE /api/family/ - Delete the family group (admin only)."""
+    @action(detail=False, methods=['delete'], url_path='delete')
+    def delete_family(self, request):
+        """DELETE /api/family/delete/ - Delete the family group (admin only)."""
         family = self.get_family_for_user(request.user)
         if not family:
             return Response(

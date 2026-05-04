@@ -9,7 +9,7 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-4 (shipped 2026-04-30)
-- 🚧 **v2.0 Production** — Phases 5-6 (in progress)
+- 🚧 **v2.0 Production** — Phase 5 shipped, Phase 6 in progress
 
 ---
 
@@ -37,7 +37,7 @@
 See archive: `.planning/milestones/v1.0-ROADMAP.md`
 </details>
 
-### Phase 5 — Orçamento e Metas ✅
+### Phase 5 — Orçamento e Metas ✅ SHIPPED 2026-05-04
 
 **Goal:** Usuários podem definir metas de gasto por categoria e acompanhar progresso no dashboard.
 
@@ -53,14 +53,15 @@ See archive: `.planning/milestones/v1.0-ROADMAP.md`
 - ✅ Frontend: `BudgetEditModal.vue` com confirmação ao editar meta com gastos existentes
 - ✅ Dashboard mini block — progress bars de metas entre comportamento e gráficos
 - ✅ App.vue: nova aba "Metas" (`pi pi-bullseye`) com `BudgetView`
-- Dashboard: barra de progresso por categoria
-- Alerta visual quando gasto ultrapassa 80% da meta
+- ✅ Dashboard: barra de progresso por categoria
+- ✅ Alerta visual quando gasto ultrapassa 80% da meta (toast + dashboard insights)
+- ✅ Alerta crítico quando > 100%
 
 **Verification:**
-- [ ] Usuário define meta de R$ 500 para "Mercado"
-- [ ] Dashboard mostra progresso "R$ 320 / R$ 500 (64%)"
-- [ ] Alerta aparece quando gasto > 80% da meta
-- [ ] Alerta muda para crítico quando > 100%
+- [x] Usuário define meta de R$ 500 para "Mercado"
+- [x] Dashboard mostra progresso "R$ 320 / R$ 500 (64%)"
+- [x] Alerta aparece quando gasto > 80% da meta (toast warn + dashboard warning)
+- [x] Alerta muda para crítico quando > 100% (toast error + dashboard alert)
 
 ---
 
@@ -93,7 +94,7 @@ See archive: `.planning/milestones/v1.0-ROADMAP.md`
 | Milestone | Phases | Status |
 |-----------|--------|--------|
 | v1.0 | 1–4 | ✅ Shipped (2026-04-30) |
-| v2.0 | 5–6 | � Planned |
+| v2.0 | 5–6 | 🚧 Phase 5 shipped, Phase 6 planned |
 
 ---
-*Last updated: 2026-04-30 after v1.0 milestone completion*
+*Last updated: 2026-05-04 after Phase 5 completion*

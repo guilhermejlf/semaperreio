@@ -4,8 +4,8 @@
       <!-- Step 1: Form -->
       <template v-if="etapa === 'form'">
         <div class="modal-header">
-          <span class="modal-icon">✏️</span>
-          <h3>{{ titulo }}</h3>
+          <h2>{{ titulo }}</h2>
+          <button @click="onCancel" class="modal-close">×</button>
         </div>
 
         <div v-if="metaLocal.gasto_realizado > 0" class="modal-contexto">
@@ -30,19 +30,25 @@
           <span v-if="erro" class="erro-msg">{{ erro }}</span>
         </div>
 
+        <div v-if="metaLocal.modo === 'criar' || metaLocal.modo === 'criar_categoria'" class="form-group">
+          <label>Período</label>
+          <div class="period-selectors">
+            <select v-model="mesSelecionado" class="input-field select-field period-select">
+              <option v-for="(nome, idx) in mesesNomes" :key="idx" :value="idx + 1">{{ nome }}</option>
+            </select>
+            <select v-model="anoSelecionado" class="input-field select-field period-select">
+              <option v-for="ano in anosDisponiveis" :key="ano" :value="ano">{{ ano }}</option>
+            </select>
+          </div>
+        </div>
+
         <div v-if="metaLocal.modo === 'criar_categoria'" class="form-group">
           <label>Categoria</label>
-          <select v-model="metaLocal.categoria" class="input-field select-field">
+          <select v-model="categoriaSelecionada" class="input-field select-field">
             <option value="" disabled>Selecione uma categoria</option>
-            <option value="alimentacao">Alimentação</option>
-            <option value="transporte">Transporte</option>
-            <option value="moradia">Moradia</option>
-            <option value="saude">Saúde</option>
-            <option value="educacao">Educação</option>
-            <option value="lazer">Lazer</option>
-            <option value="vestuario">Vestuário</option>
-            <option value="servicos">Serviços</option>
-            <option value="outros">Outros</option>
+            <option v-for="(label, value) in categoriasDisponiveis" :key="value" :value="value">
+              {{ label }}
+            </option>
           </select>
         </div>
 
@@ -57,8 +63,8 @@
       <!-- Step 2: Confirmation -->
       <template v-else-if="etapa === 'confirmar'">
         <div class="modal-header confirmacao">
-          <span class="modal-icon">⚠️</span>
-          <h3>Confirme a alteração</h3>
+          <h2>Confirme a alteração</h2>
+          <button @click="onCancel" class="modal-close">×</button>
         </div>
 
         <div class="confirmacao-texto">
@@ -84,11 +90,30 @@
 </template>
 
 <script>
+const CATEGORIA_OPTIONS = {
+  moradia: 'Moradia',
+  mercado: 'Mercado',
+  restaurantes: 'Restaurantes / Delivery',
+  transporte: 'Transporte',
+  saude: 'Saúde',
+  educacao: 'Educação',
+  lazer: 'Lazer',
+  contas: 'Contas e serviços',
+  compras: 'Compras',
+  outros: 'Outros'
+}
+
+const MES_NOMES = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+]
+
 export default {
   name: 'BudgetEditModal',
   props: {
     visible: { type: Boolean, default: false },
-    meta: { type: Object, default: null }
+    meta: { type: Object, default: null },
+    categoriasUsadas: { type: Array, default: () => [] }
   },
   emits: ['save', 'cancel'],
   data() {
@@ -96,7 +121,10 @@ export default {
       etapa: 'form',
       valorInput: '',
       erro: '',
-      metaLocal: {}
+      metaLocal: {},
+      categoriaSelecionada: '',
+      mesSelecionado: new Date().getMonth() + 1,
+      anoSelecionado: new Date().getFullYear()
     }
   },
   computed: {
@@ -110,17 +138,39 @@ export default {
       return isNaN(v) ? 0 : v
     },
     valido() {
-      return this.valorNumerico > 0 && (this.metaLocal.modo !== 'criar_categoria' || this.metaLocal.categoria)
+      return this.valorNumerico > 0 && (this.metaLocal.modo !== 'criar_categoria' || this.categoriaSelecionada)
+    },
+    categoriasDisponiveis() {
+      const usadas = new Set(this.categoriasUsadas || [])
+      return Object.fromEntries(
+        Object.entries(CATEGORIA_OPTIONS).filter(([key]) => !usadas.has(key))
+      )
+    },
+    mesesNomes() {
+      return MES_NOMES
+    },
+    anosDisponiveis() {
+      const atual = new Date().getFullYear()
+      return [atual, atual - 1, atual - 2]
     }
   },
   watch: {
-    visible(val) {
-      if (val) {
-        this.etapa = 'form'
-        this.erro = ''
-        this.metaLocal = { ...this.meta, valor_meta_original: this.meta?.valor_meta || 0 }
-        this.valorInput = this.meta?.valor_meta ? String(this.meta.valor_meta) : ''
+    visible: {
+      immediate: true,
+      handler(val) {
+        if (val) {
+          this.etapa = 'form'
+          this.erro = ''
+          this.metaLocal = { ...this.meta, valor_meta_original: this.meta?.valor_meta || 0 }
+          this.valorInput = this.meta?.valor_meta ? String(this.meta.valor_meta) : ''
+          this.categoriaSelecionada = this.meta?.categoria || ''
+          this.mesSelecionado = this.meta?.mes || new Date().getMonth() + 1
+          this.anoSelecionado = this.meta?.ano || new Date().getFullYear()
+        }
       }
+    },
+    categoriaSelecionada(val) {
+      this.metaLocal.categoria = val
     }
   },
   methods: {
@@ -151,10 +201,15 @@ export default {
     },
 
     onConfirmar() {
-      this.$emit('save', {
+      const payload = {
         ...this.metaLocal,
         valor_meta: this.valorNumerico
-      })
+      }
+      if (this.metaLocal.modo === 'criar' || this.metaLocal.modo === 'criar_categoria') {
+        payload.mes = this.mesSelecionado
+        payload.ano = this.anoSelecionado
+      }
+      this.$emit('save', payload)
     }
   }
 }
@@ -197,24 +252,43 @@ export default {
 
 .modal-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
-.modal-header.confirmacao h3 {
-  color: #fbbf24;
-}
-
-.modal-icon {
-  font-size: 1.5rem;
-}
-
-.modal-header h3 {
+.modal-header h2 {
   margin: 0;
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #e5e7eb;
+  font-size: 22px;
+  background: linear-gradient(90deg, #22c55e, #3b82f6);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.modal-header.confirmacao h2 {
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.modal-close {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #94a3b8;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.modal-close:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
 }
 
 .modal-contexto {
@@ -285,6 +359,15 @@ export default {
 .select-field {
   padding-left: 14px;
   text-align: left;
+}
+
+.period-selectors {
+  display: flex;
+  gap: 12px;
+}
+
+.period-select {
+  flex: 1;
 }
 
 .input-field:focus {

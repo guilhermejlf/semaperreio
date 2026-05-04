@@ -483,7 +483,7 @@ export default {
         }
 
         const payload = { ...this.novo, data: this.novo.data_competencia || this.novo.data }
-        await apiRequest(API_ENDPOINTS.GASTOS_LIST, {
+        const response = await apiRequest(API_ENDPOINTS.GASTOS_LIST, {
           method: 'POST',
           body: JSON.stringify(payload)
         })
@@ -494,6 +494,15 @@ export default {
           detail: 'Gasto adicionado!',
           life: 3000
         })
+
+        if (response.alerta_meta) {
+          this.$toast.add({
+            severity: response.alerta_meta.status === 'critical' ? 'error' : 'warn',
+            summary: 'Meta de Gastos',
+            detail: response.alerta_meta.mensagem,
+            life: 6000
+          })
+        }
 
         this.fecharModal()
         
@@ -524,7 +533,7 @@ export default {
         }
 
         const payload = { ...this.novo, data: this.novo.data_competencia || this.novo.data }
-        await apiRequest(API_ENDPOINTS.GASTO_DETAIL(this.editingGasto), {
+        const response = await apiRequest(API_ENDPOINTS.GASTO_DETAIL(this.editingGasto), {
           method: 'PUT',
           body: JSON.stringify(payload)
         })
@@ -535,6 +544,15 @@ export default {
           detail: 'Gasto atualizado!',
           life: 3000
         })
+
+        if (response.alerta_meta) {
+          this.$toast.add({
+            severity: response.alerta_meta.status === 'critical' ? 'error' : 'warn',
+            summary: 'Meta de Gastos',
+            detail: response.alerta_meta.mensagem,
+            life: 6000
+          })
+        }
 
         this.fecharModal()
         await this.carregarGastos()

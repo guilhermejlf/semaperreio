@@ -8,20 +8,9 @@
 
     <!-- Conteúdo -->
     <template v-else>
-      <!-- Header -->
-      <div class="receitas-toolbar">
-        <div class="receitas-total">
-          <span class="total-label">Total do período</span>
-          <span class="total-value">{{ formatarValor(totalReceitas) }}</span>
-        </div>
-        <button @click="abrirModal" class="btn-primary btn-sm">
-          <i class="pi pi-plus"></i> Nova Receita
-        </button>
-      </div>
-
       <!-- Lista -->
       <div v-if="receitas.length === 0" class="empty-state">
-        <i class="pi pi-inbox"></i>
+        <i class="pi pi-wallet empty-icon"></i>
         <h3>Nenhuma receita cadastrada</h3>
         <p>Comece adicionando sua primeira receita!</p>
         <button @click="abrirModal" class="btn-primary">
@@ -29,8 +18,18 @@
         </button>
       </div>
 
-      <div v-else class="receitas-list">
-        <BaseCard
+      <div v-else>
+        <div class="receitas-toolbar">
+          <div class="receitas-total">
+            <span class="total-label">Total do período</span>
+            <span class="total-value">{{ formatarValor(totalReceitas) }}</span>
+          </div>
+          <button @click="abrirModal" class="btn-primary btn-sm">
+            <i class="pi pi-plus"></i> Nova Receita
+          </button>
+        </div>
+        <div class="receitas-list">
+          <BaseCard
           v-for="r in receitas"
           :key="r.id"
           :title="r.descricao || 'Receita'"
@@ -52,6 +51,7 @@
             </template>
           </template>
         </BaseCard>
+      </div>
       </div>
     </template>
 

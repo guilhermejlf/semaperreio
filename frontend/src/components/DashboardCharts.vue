@@ -263,7 +263,28 @@ export default {
         })
       }
 
-      // Insight 3: Variação vs mês anterior
+      // Insight 3: Metas ultrapassadas
+      if (d.metas) {
+        const metasGeral = d.metas.geral
+        if (metasGeral && metasGeral.percentual_usado > 80) {
+          lista.push({
+            tipo: metasGeral.percentual_usado > 100 ? 'alerta' : 'warning',
+            mensagem: `Meta geral: ${metasGeral.percentual_usado.toFixed(0)}% atingida (${this.formatarValor(metasGeral.gasto_realizado)} / ${this.formatarValor(metasGeral.valor_meta)})`
+          })
+        }
+        const metasCriticas = (d.metas.por_categoria || [])
+          .filter(m => m.percentual_usado > 80)
+          .sort((a, b) => b.percentual_usado - a.percentual_usado)
+          .slice(0, 2)
+        metasCriticas.forEach(m => {
+          lista.push({
+            tipo: m.percentual_usado > 100 ? 'alerta' : 'warning',
+            mensagem: `Meta ${m.categoria_nome}: ${m.percentual_usado.toFixed(0)}% atingida (${this.formatarValor(m.gasto_realizado)} / ${this.formatarValor(m.valor_meta)})`
+          })
+        })
+      }
+
+      // Insight 4: Variação vs mês anterior
       if (Math.abs(variacao) > 0.1) {
         lista.push({
           tipo: variacao > 0 ? 'alerta' : 'sucesso',
@@ -271,10 +292,10 @@ export default {
         })
       }
 
-      // Limitar a 3 insights, priorizando alertas
+      // Limitar a 3 insights, priorizando alertas e warnings
       return lista
         .sort((a, b) => {
-          const peso = { alerta: 3, info: 2, sucesso: 1 }
+          const peso = { alerta: 4, warning: 3, info: 2, sucesso: 1 }
           return (peso[b.tipo] || 0) - (peso[a.tipo] || 0)
         })
         .slice(0, 3)
@@ -753,6 +774,12 @@ export default {
   background: rgba(59, 130, 246, 0.1);
   color: #93c5fd;
   border-left: 3px solid #3b82f6;
+}
+
+.insights-list li.warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
+  border-left: 3px solid #f59e0b;
 }
 
 /* Charts Grid */

@@ -13,8 +13,17 @@ from decimal import Decimal
 from .models import Gasto, FamilyMembership, Receita, Family, MetaGasto
 from .serializers import GastoSerializer, ReceitaSerializer, MetaGastoSerializer
 from .permissions import GastoPermission
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import permission_classes
 
 logger = logging.getLogger(__name__)
+
+def _clean_optional_dates(data, fields=('data_competencia', 'data_pagamento')):
+    """Converte strings vazias em None para campos de data opcionais no DRF."""
+    for field in fields:
+        if field in data and data[field] == '':
+            data[field] = None
+    return data
 
 # -------------------------
 # IA - PREVISÃO COM DADOS REAIS (por categoria)
@@ -260,6 +269,7 @@ def gastos(request):
 
         elif request.method == 'POST':
             dados = request.data.copy()
+            dados = _clean_optional_dates(dados)
             # Se data_competencia não informado, copiar de data
             if not dados.get('data_competencia') and dados.get('data'):
                 dados['data_competencia'] = dados['data']
@@ -272,8 +282,12 @@ def gastos(request):
             if serializer.is_valid():
                 family = get_user_family(request.user)
                 gasto = serializer.save(user=request.user, family=family)
+                alerta = check_budget_alert(request.user, gasto)
                 return Response(
-                    serializer.data, 
+                    {
+                        "gasto": serializer.data,
+                        "alerta_meta": alerta
+                    },
                     status=status.HTTP_201_CREATED
                 )
             
@@ -319,6 +333,7 @@ def gasto_detail(request, pk):
 
         elif request.method == 'PUT':
             dados = request.data.copy()
+            dados = _clean_optional_dates(dados)
             # Se data_competencia não informado, manter o existente ou copiar de data
             if not dados.get('data_competencia'):
                 if dados.get('data'):
@@ -338,7 +353,14 @@ def gasto_detail(request, pk):
                         )
 
                 serializer.save()
-                return Response(serializer.data, status=status.HTTP_200_OK)
+                alerta = check_budget_alert(request.user, gasto)
+                return Response(
+                    {
+                        "gasto": serializer.data,
+                        "alerta_meta": alerta
+                    },
+                    status=status.HTTP_200_OK
+                )
             else:
                 return Response(
                     {"erro": "Dados inválidos", "detalhes": serializer.errors},
@@ -394,6 +416,13 @@ def receita_detail(request, pk):
 
         elif request.method == 'PUT':
             dados = request.data.copy()
+            dados = _clean_optional_dates(dados, fields=('data_competencia',))
+            # Se data_competencia não informada, manter existente ou copiar de data
+            if not dados.get('data_competencia'):
+                if dados.get('data'):
+                    dados['data_competencia'] = dados['data']
+                else:
+                    dados['data_competencia'] = receita.data_competencia or receita.data
             serializer = ReceitaSerializer(receita, data=dados)
             if serializer.is_valid():
                 if receita.user != request.user:
@@ -506,9 +535,10 @@ def dashboard(request):
         else:
             receitas_queryset = Receita.objects.filter(user=request.user)
 
-        # Total de receitas no período (por data)
+        # Total de receitas no período (por data_competencia com fallback para data)
         receitas_agg = receitas_queryset.filter(
-            data__month=mes_int, data__year=ano_int
+            Q(data_competencia__month=mes_int, data_competencia__year=ano_int) |
+            Q(data_competencia__isnull=True, data__month=mes_int, data__year=ano_int)
         ).aggregate(total=Sum('valor'))
         total_receitas = receitas_agg['total'] or Decimal('0.00')
 
@@ -600,9 +630,10 @@ def dashboard(request):
             ).aggregate(total=Sum('valor'))
             total_gastos_mes = gastos_agg['total'] or Decimal('0.00')
 
-            # Receitas do mês (por data)
+            # Receitas do mês (por data_competencia com fallback para data)
             receitas_agg = receitas_queryset.filter(
-                data__month=m, data__year=a
+                Q(data_competencia__month=m, data_competencia__year=a) |
+                Q(data_competencia__isnull=True, data__month=m, data__year=a)
             ).aggregate(total=Sum('valor'))
             total_receitas_mes = receitas_agg['total'] or Decimal('0.00')
 
@@ -693,6 +724,10 @@ def receitas(request):
 
         elif request.method == 'POST':
             dados = request.data.copy()
+            dados = _clean_optional_dates(dados, fields=('data_competencia',))
+            # Se data_competencia não informada, copiar de data
+            if not dados.get('data_competencia') and dados.get('data'):
+                dados['data_competencia'] = dados['data']
             serializer = ReceitaSerializer(data=dados)
 
             if serializer.is_valid():
@@ -884,6 +919,7 @@ def _get_gasto_realizado(user, categoria, mes, ano):
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def listar_metas(request):
     """Lista todas as metas do usuário para um mês/ano."""
     try:
@@ -905,7 +941,18 @@ def listar_metas(request):
         )
 
 
+def _get_soma_metas_categoria(user, mes, ano, exclude_pk=None):
+    """Retorna a soma dos valores das metas por categoria (excluindo a meta geral)."""
+    qs = MetaGasto.objects.filter(user=user, mes=mes, ano=ano, categoria__isnull=False)
+    if exclude_pk:
+        qs = qs.exclude(pk=exclude_pk)
+    result = qs.aggregate(total=Sum('valor_meta'))
+    total = result.get('total') or Decimal('0.00')
+    return float(total)
+
+
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def criar_meta(request):
     """Cria uma nova meta de gasto."""
     try:
@@ -932,6 +979,26 @@ def criar_meta(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Validação: meta geral é o teto
+        meta_geral = MetaGasto.objects.filter(user=request.user, mes=mes, ano=ano, categoria__isnull=True).first()
+        if categoria:
+            # Meta por categoria: soma das categorias não pode ultrapassar a meta geral
+            if meta_geral:
+                soma_categorias = _get_soma_metas_categoria(request.user, mes, ano)
+                if soma_categorias + valor_meta > float(meta_geral.valor_meta):
+                    return Response(
+                        {"erro": f"A soma das metas por categoria (R$ {soma_categorias + valor_meta:.2f}) ultrapassa a meta geral de R$ {float(meta_geral.valor_meta):.2f}"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+        else:
+            # Meta geral: deve ser >= soma das metas por categoria existentes
+            soma_categorias = _get_soma_metas_categoria(request.user, mes, ano)
+            if valor_meta < soma_categorias:
+                return Response(
+                    {"erro": f"A meta geral (R$ {valor_meta:.2f}) não pode ser menor que a soma das metas por categoria (R$ {soma_categorias:.2f})"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         meta = MetaGasto.objects.create(
             user=request.user,
             categoria=categoria,
@@ -950,6 +1017,7 @@ def criar_meta(request):
 
 
 @api_view(['PUT'])
+@permission_classes([IsAuthenticated])
 def atualizar_meta(request, pk):
     """Atualiza o valor de uma meta existente."""
     try:
@@ -961,6 +1029,27 @@ def atualizar_meta(request, pk):
                 {"erro": "Valor da meta deve ser maior que zero"},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+        # Validação: meta geral é o teto
+        mes, ano = meta.mes, meta.ano
+        meta_geral = MetaGasto.objects.filter(user=request.user, mes=mes, ano=ano, categoria__isnull=True).first()
+        if meta.categoria:
+            # Atualizando meta por categoria
+            if meta_geral:
+                soma_categorias = _get_soma_metas_categoria(request.user, mes, ano, exclude_pk=meta.pk)
+                if soma_categorias + valor_meta > float(meta_geral.valor_meta):
+                    return Response(
+                        {"erro": f"A soma das metas por categoria (R$ {soma_categorias + valor_meta:.2f}) ultrapassa a meta geral de R$ {float(meta_geral.valor_meta):.2f}"},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+        else:
+            # Atualizando meta geral
+            soma_categorias = _get_soma_metas_categoria(request.user, mes, ano)
+            if valor_meta < soma_categorias:
+                return Response(
+                    {"erro": f"A meta geral (R$ {valor_meta:.2f}) não pode ser menor que a soma das metas por categoria (R$ {soma_categorias:.2f})"},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
         meta.valor_meta = valor_meta
         meta.save()
@@ -980,6 +1069,7 @@ def atualizar_meta(request, pk):
 
 
 @api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
 def deletar_meta(request, pk):
     """Deleta uma meta de gasto."""
     try:
@@ -1015,3 +1105,61 @@ def _build_metas_context(user, mes, ano):
             por_categoria.append(data)
     
     return {"geral": geral, "por_categoria": por_categoria}
+
+
+def check_budget_alert(user, gasto):
+    """
+    Verifica se o gasto recém-criado/atualizado ultrapassa alguma meta.
+    Retorna dict com alerta ou None.
+    """
+    data_efetiva = gasto.data_competencia or gasto.data
+    if not data_efetiva:
+        return None
+    
+    mes = data_efetiva.month
+    ano = data_efetiva.year
+    
+    metas = MetaGasto.objects.filter(user=user, mes=mes, ano=ano)
+    if not metas.exists():
+        return None
+    
+    for meta in metas:
+        if meta.categoria:
+            total_gasto = Gasto.objects.filter(
+                user=user,
+                data_competencia__month=mes,
+                data_competencia__year=ano,
+                categoria=meta.categoria
+            ).aggregate(total=Sum('valor'))['total'] or 0
+            categoria_nome = dict(Gasto.CATEGORIAS_CHOICES).get(meta.categoria, meta.categoria)
+        else:
+            total_gasto = Gasto.objects.filter(
+                user=user,
+                data_competencia__month=mes,
+                data_competencia__year=ano
+            ).aggregate(total=Sum('valor'))['total'] or 0
+            categoria_nome = "Geral"
+        
+        if not meta.valor_meta or float(meta.valor_meta) <= 0:
+            continue
+        
+        pct = (float(total_gasto) / float(meta.valor_meta)) * 100
+        
+        if pct > 100:
+            return {
+                "alertar": True,
+                "mensagem": f"Você ultrapassou a meta de {categoria_nome} em {pct:.0f}% (R$ {float(total_gasto):.2f} / R$ {float(meta.valor_meta):.2f})",
+                "categoria": categoria_nome,
+                "pct": round(pct, 1),
+                "status": "critical"
+            }
+        elif pct > 80:
+            return {
+                "alertar": True,
+                "mensagem": f"Você atingiu {pct:.0f}% da meta de {categoria_nome} (R$ {float(total_gasto):.2f} / R$ {float(meta.valor_meta):.2f})",
+                "categoria": categoria_nome,
+                "pct": round(pct, 1),
+                "status": "danger"
+            }
+    
+    return None

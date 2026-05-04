@@ -23,20 +23,31 @@
       <p v-if="periodo">
         Defina metas para acompanhar seus gastos de {{ mesNome }} {{ periodo.ano }}.
       </p>
-      <button class="btn-primary" @click="abrirCriarMetaGeral">
-        <i class="pi pi-plus"></i> Definir Meta Geral
+      <button class="btn-primary btn-lg" @click="abrirCriarMetaGeral">
+        Adicionar Meta Geral
       </button>
     </div>
 
     <!-- Conteúdo -->
     <template v-else>
-      <!-- Meta Geral -->
-      <div v-if="metaGeral" class="meta-geral-card" :class="metaGeral.status">
+      <!-- Bloco Meta Geral -->
+      <div class="section-header">
+        <div class="block-title">Orçamento Geral</div>
+      </div>
+      <div v-if="!metaGeral" class="nova-meta-section">
+        <button @click="abrirCriarMetaGeral" class="btn-primary">
+          <i class="pi pi-plus"></i> Definir Meta Geral
+        </button>
+      </div>
+      <div v-else class="meta-geral-card" :class="metaGeral.status">
         <div class="meta-header">
-          <span class="meta-icon">🎯</span>
+          <span class="meta-icon"><i class="pi pi-bullseye"></i></span>
           <span class="meta-titulo">Meta Geral — {{ mesNome }} {{ periodo.ano }}</span>
-          <button class="btn-edit" @click="abrirEditar(metaGeral)">
+          <button class="btn-edit" @click="abrirEditar(metaGeral)" title="Editar meta geral">
             <i class="pi pi-pencil"></i>
+          </button>
+          <button class="btn-edit delete-btn" @click="onDeleteMeta(metaGeral)" title="Deletar meta geral">
+            <i class="pi pi-trash"></i>
           </button>
         </div>
         <div class="meta-valores">
@@ -58,15 +69,13 @@
         </div>
       </div>
 
-      <!-- Botão criar meta geral se não existir -->
-      <div v-else class="criar-meta-geral">
-        <button class="btn-primary" @click="abrirCriarMetaGeral">
-          <i class="pi pi-plus"></i> Definir Meta Geral
+      <!-- Bloco Categorias -->
+      <div class="section-header">
+        <div class="block-title">Metas por Categoria</div>
+        <button @click="abrirCriarCategoria" class="btn-primary btn-sm">
+          <i class="pi pi-plus"></i> Adicionar Meta
         </button>
       </div>
-
-      <!-- Bloco Categorias -->
-      <div class="block-title">Metas por Categoria</div>
       <div class="categorias-grid">
         <div
           v-for="meta in metasPorCategoria"
@@ -75,10 +84,15 @@
           :class="meta.status"
         >
           <div class="categoria-header">
-            <span class="categoria-nome">{{ categoriaEmoji(meta.categoria) }} {{ meta.categoria_nome }}</span>
-            <button class="btn-edit" @click="abrirEditar(meta)">
-              <i class="pi pi-pencil"></i>
-            </button>
+            <span class="categoria-nome">{{ categoriaEmoji(meta.categoria) }} {{ formatarCategoriaDisplay(meta.categoria, meta.categoria_nome) }}</span>
+            <div class="categoria-actions">
+              <button class="btn-edit" @click="abrirEditar(meta)" title="Editar meta">
+                <i class="pi pi-pencil"></i>
+              </button>
+              <button class="btn-edit delete-btn" @click="onDeleteMeta(meta)" title="Deletar meta de categoria">
+                <i class="pi pi-trash"></i>
+              </button>
+            </div>
           </div>
           <div class="categoria-valores">
             <span class="categoria-gasto" :class="meta.status">{{ formatarValor(meta.gasto_realizado) }}</span>
@@ -98,22 +112,17 @@
             </span>
           </div>
         </div>
-
-        <!-- Card para adicionar nova meta de categoria -->
-        <div class="categoria-card nova-meta" @click="abrirCriarCategoria">
-          <div class="nova-meta-content">
-            <i class="pi pi-plus"></i>
-            <span>Adicionar Meta de Categoria</span>
-          </div>
-        </div>
       </div>
     </template>
 
     <!-- Modal -->
     <BudgetEditModal
+      v-if="modalVisible"
       :visible="modalVisible"
       :meta="metaSelecionada"
-      :periodo="periodo"
+      :modo-criar="true"
+      :categoria-pre-selecionada="null"
+      :categorias-usadas="categoriasUsadas"
       @save="onSaveMeta"
       @cancel="modalVisible = false"
     />
@@ -121,7 +130,7 @@
 </template>
 
 <script>
-import { fetchMetas, createMeta, updateMeta } from '../config/api.js'
+import { fetchMetas, createMeta, updateMeta, deleteMeta } from '../config/api.js'
 import BudgetEditModal from './BudgetEditModal.vue'
 
 const MES_NOMES = [
@@ -130,14 +139,15 @@ const MES_NOMES = [
 ]
 
 const CATEGORIA_EMOJIS = {
-  'alimentacao': '🍔',
-  'transporte': '🚗',
   'moradia': '🏠',
+  'mercado': '🛒',
+  'restaurantes': '🍔',
+  'transporte': '🚗',
   'saude': '💊',
   'educacao': '📚',
   'lazer': '🎮',
-  'vestuario': '👕',
-  'servicos': '🔧',
+  'contas': '�',
+  'compras': '�️',
   'outros': '📦'
 }
 
@@ -154,7 +164,8 @@ export default {
       metasData: { geral: null, por_categoria: [] },
       loading: false,
       modalVisible: false,
-      metaSelecionada: null
+      metaSelecionada: null,
+      metaToDelete: null
     }
   },
   computed: {
@@ -177,6 +188,10 @@ export default {
     metasPorCategoria() {
       const lista = (this.metasData && this.metasData.por_categoria) ? this.metasData.por_categoria : []
       return [...lista].sort((a, b) => (b.percentual_usado || 0) - (a.percentual_usado || 0))
+    },
+    categoriasUsadas() {
+      const cats = (this.metasData && this.metasData.por_categoria) ? this.metasData.por_categoria : []
+      return cats.map(m => m.categoria)
     }
   },
   mounted() {
@@ -228,6 +243,26 @@ export default {
       return CATEGORIA_EMOJIS[categoria] || '🏷️'
     },
 
+    formatarCategoriaDisplay(categoria, categoriaNome) {
+      if (categoriaNome && categoriaNome !== categoria) return categoriaNome
+      const map = {
+        alimentacao: 'Alimentação',
+        vestuario: 'Vestuário',
+        servicos: 'Serviços',
+        moradia: 'Moradia',
+        mercado: 'Mercado',
+        restaurantes: 'Restaurantes / Delivery',
+        transporte: 'Transporte',
+        saude: 'Saúde',
+        educacao: 'Educação',
+        lazer: 'Lazer',
+        contas: 'Contas e serviços',
+        compras: 'Compras',
+        outros: 'Outros'
+      }
+      return map[categoria] || (categoria ? categoria.charAt(0).toUpperCase() + categoria.slice(1).replace(/_/g, ' ') : 'Geral')
+    },
+
     abrirEditar(meta) {
       this.metaSelecionada = { ...meta, modo: 'editar' }
       this.modalVisible = true
@@ -257,6 +292,29 @@ export default {
       this.modalVisible = true
     },
 
+    onDeleteMeta(meta) {
+      const nome = this.formatarCategoriaDisplay(meta.categoria, meta.categoria_nome) || 'Meta Geral'
+      this.$confirm.require({
+        message: `Deseja deletar a meta "${nome}" para ${MES_NOMES[this.periodo.mes - 1]} ${this.periodo.ano}?`,
+        header: 'Deletar Meta',
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: 'Deletar',
+        rejectLabel: 'Cancelar',
+        acceptClass: 'p-button-danger',
+        accept: async () => {
+          try {
+            if (meta && meta.id) {
+              await deleteMeta(meta.id)
+              this.carregarMetas()
+              this.$toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Meta deletada!', life: 3000 })
+            }
+          } catch (error) {
+            console.error('Erro ao deletar meta:', error)
+            this.$toast.add({ severity: 'error', summary: 'Erro', detail: error.message || 'Erro ao deletar meta', life: 3000 })
+          }
+        }
+      })
+    },
     async onSaveMeta(meta) {
       try {
         if (meta.id) {
@@ -271,9 +329,10 @@ export default {
         }
         this.modalVisible = false
         this.carregarMetas()
+        this.$toast.add({ severity: 'success', summary: 'Sucesso', detail: 'Meta salva!', life: 3000 })
       } catch (error) {
         console.error('Erro ao salvar meta:', error)
-        alert(error.message || 'Erro ao salvar meta')
+        this.$toast.add({ severity: 'error', summary: 'Erro', detail: error.message || 'Erro ao salvar meta', life: 5000 })
       }
     }
   }
@@ -285,6 +344,20 @@ export default {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+}
+
+/* Section Header (toolbar padrão como gastos/receitas) */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.section-header .block-title {
+  margin: 0;
 }
 
 /* Period Selector */
@@ -469,10 +542,24 @@ export default {
   margin-bottom: 10px;
 }
 
+.categoria-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .categoria-nome {
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: #e5e7eb;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 20px;
+  padding: 4px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0.02em;
 }
 
 .categoria-valores {
@@ -568,17 +655,12 @@ export default {
 }
 
 /* Criar Meta Geral */
-.criar-meta-geral {
-  text-align: center;
-  margin-bottom: 24px;
-}
-
 /* Buttons */
 .btn-primary {
-  background: #22c55e;
+  background: linear-gradient(90deg, #22c55e, #3b82f6);
   color: white;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   padding: 12px 24px;
   font-size: 0.95rem;
   font-weight: 600;
@@ -586,12 +668,25 @@ export default {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  transition: background 0.2s, transform 0.2s;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
 }
 
 .btn-primary:hover {
-  background: #16a34a;
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(34, 197, 94, 0.4);
+}
+
+.btn-primary.btn-sm {
+  padding: 10px 20px;
+  font-size: 14px;
+  border-radius: 10px;
+}
+
+.btn-primary.btn-lg {
+  padding: 15px 30px;
+  font-size: 1rem;
+  border-radius: 12px;
 }
 
 /* Titles */

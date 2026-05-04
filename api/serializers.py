@@ -85,13 +85,15 @@ class ReceitaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Receita
-        fields = ['id', 'user', 'valor', 'descricao', 'data', 'user_name', 'is_group', 'criado_em', 'atualizado_em']
+        fields = ['id', 'user', 'valor', 'descricao', 'data', 'data_competencia', 'user_name', 'is_group', 'criado_em', 'atualizado_em']
         read_only_fields = ['id', 'user', 'criado_em', 'atualizado_em']
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
         if data.get('data'):
             data['data'] = instance.data.strftime('%Y-%m-%d')
+        if data.get('data_competencia') and instance.data_competencia:
+            data['data_competencia'] = instance.data_competencia.strftime('%Y-%m-%d')
         if data.get('criado_em'):
             data['criado_em'] = instance.criado_em.isoformat()
         if data.get('atualizado_em'):
@@ -109,6 +111,13 @@ class ReceitaSerializer(serializers.ModelSerializer):
         um_ano_atras = timezone.now().date().replace(year=timezone.now().date().year - 1)
         if value < um_ano_atras:
             raise serializers.ValidationError("A data não pode ser anterior a um ano")
+        return value
+
+    def validate_data_competencia(self, value):
+        if value:
+            um_ano_atras = timezone.now().date().replace(year=timezone.now().date().year - 1)
+            if value < um_ano_atras:
+                raise serializers.ValidationError("A data de competência não pode ser anterior a um ano")
         return value
 
     def validate_descricao(self, value):
@@ -168,6 +177,7 @@ class MetaGastoSerializer(serializers.ModelSerializer):
         return 'ok'
 
     def get_categoria_nome(self, obj):
+        from .models import Gasto
         if obj.categoria:
-            return obj.get_categoria_display()
+            return dict(Gasto.CATEGORIAS_CHOICES).get(obj.categoria, obj.categoria)
         return 'Geral'

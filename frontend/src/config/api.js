@@ -28,6 +28,7 @@ export const API_ENDPOINTS = {
   FAMILY_JOIN: `${API_BASE_URL}/api/family/join/`,
   FAMILY_LEAVE: `${API_BASE_URL}/api/family/leave/`,
   FAMILY_REGENERATE_CODE: `${API_BASE_URL}/api/family/regenerate-code/`,
+  FAMILY_DELETE: `${API_BASE_URL}/api/family/delete/`,
 
   // Metas de Gasto
   METAS: (mes, ano) => `${API_BASE_URL}/api/metas/?mes=${mes}&ano=${ano}`,
@@ -185,7 +186,7 @@ export async function removeFamilyMember(userId) {
 }
 
 export async function deleteFamily() {
-  return await apiRequest(API_ENDPOINTS.FAMILY, {
+  return await apiRequest(API_ENDPOINTS.FAMILY_DELETE, {
     method: 'DELETE'
   })
 }

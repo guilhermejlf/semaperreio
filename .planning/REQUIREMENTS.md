@@ -9,9 +9,9 @@
 
 ### Orçamento e Metas (BUDG)
 
-- [ ] **BUDG-01**: Usuário pode definir meta de gasto mensal por categoria (ex: "Mercado: R$ 500")
-- [ ] **BUDG-02**: Dashboard exibe progresso da meta com barra visual ("R$ 320 / R$ 500 (64%)")
-- [ ] **BUDG-03**: Alerta visual quando gasto ultrapassa 80% da meta; alerta crítico quando > 100%
+- [x] **BUDG-01**: Usuário pode definir meta de gasto mensal por categoria (ex: "Mercado: R$ 500")
+- [x] **BUDG-02**: Dashboard exibe progresso da meta com barra visual ("R$ 320 / R$ 500 (64%)")
+- [x] **BUDG-03**: Alerta visual quando gasto ultrapassa 80% da meta; alerta crítico quando > 100% (toast + dashboard insights)
 
 ### Notificações (NOTF)
 
@@ -44,9 +44,9 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BUDG-01 | Phase 5 | Pending |
-| BUDG-02 | Phase 5 | Pending |
-| BUDG-03 | Phase 5 | Pending |
+| BUDG-01 | Phase 5 | ✅ Done 2026-05-04 |
+| BUDG-02 | Phase 5 | ✅ Done 2026-05-04 |
+| BUDG-03 | Phase 5 | ✅ Done 2026-05-04 |
 | NOTF-01 | Phase 6 | Pending |
 | NOTF-02 | Phase 6 | Pending |
 | INFR-01 | Phase 6 | Pending |
@@ -61,3 +61,4 @@
 ---
 
 *Requirements defined: 2026-04-30 after v2.0 milestone initialization*
+*Updated: 2026-05-04 — Phase 5 BUDG requirements completed*
