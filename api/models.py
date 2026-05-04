@@ -2,7 +2,7 @@ import random
 import string
 
 from django.db import models
-from django.core.validators import MinValueValidator, MaxLengthValidator
+from django.core.validators import MinValueValidator, MaxValueValidator, MaxLengthValidator
 from django.utils import timezone
 from django.contrib.auth.models import User
 
@@ -148,7 +148,7 @@ class MetaGasto(models.Model):
         help_text="Null = meta geral (total do mês)"
     )
     mes = models.PositiveSmallIntegerField(
-        validators=[MinValueValidator(1), MaxLengthValidator(2)]
+        validators=[MinValueValidator(1), MaxValueValidator(12)]
     )
     ano = models.PositiveSmallIntegerField()
     valor_meta = models.DecimalField(

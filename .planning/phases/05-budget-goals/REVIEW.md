@@ -7,12 +7,12 @@
 
 ## Critical Bugs
 
-### BUG-1: Wrong validator on MetaGasto.mes
+### BUG-1: Wrong validator on MetaGasto.mes ✅ FIXED
 **File:** `api/models.py`  
 **Severity:** 🔴 High  
-**Issue:** `mes` field uses `MaxLengthValidator(2)` instead of `MaxValueValidator(12)`. `MaxLengthValidator` is for strings, not integers. This will crash on migration or data validation.
+**Issue:** `mes` field used `MaxLengthValidator(2)` (for strings) instead of `MaxValueValidator(12)` (for integers). This would crash on validation.
 
-**Fix:** Replace with `MaxValueValidator(12)`.
+**Fix:** Replaced with `MaxValueValidator(12)` and added missing import. Verified Django check passes.
 
 ---
 
